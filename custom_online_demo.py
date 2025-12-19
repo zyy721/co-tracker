@@ -21,6 +21,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
+import gc
 
 class NuscenesDataset(Dataset):
     def __init__(self, data):
@@ -63,7 +64,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
 
-    a = list(range(20))
+    # a = list(range(20))
 
 
     torch.cuda.set_device(args.local_rank)
@@ -126,7 +127,7 @@ if __name__ == "__main__":
     # model = model.to(DEFAULT_DEVICE)
     model = model.to(device)
 
-    window_frames = []
+    # window_frames = []
 
     def _process_step(window_frames, is_first_step, grid_size, grid_query_frame):
         video_chunk = (
@@ -155,6 +156,10 @@ if __name__ == "__main__":
         for cam in camera_names:
             img_array_list, sample_token_list, sample_idx_list = [], [], []
             cur_save_path = os.path.join(save_path, cam)
+
+            if not os.path.exists(os.path.join(cur_save_path, scene)):
+                os.makedirs(os.path.join(cur_save_path, scene), exist_ok=True) 
+
             for sample_idx, sample in enumerate(nusc_data[scene]):
                 cur_img_path = sample['data'][cam]['filename']
                 cur_img = Image.open(os.path.join('data/nuscenes', cur_img_path))
@@ -171,8 +176,11 @@ if __name__ == "__main__":
                     start_idx = sample_idx - 9 if sample_idx>=9 else 0
                     end_idx = sample_idx + 7
                     cur_img_array_list = img_array_list[start_idx:end_idx]
+                    # cur_img_path_list = img_path_list[start_idx:end_idx]
 
                     grid_query_frame = 8 if sample_idx>=9 else sample_idx-1
+
+                    window_frames = []
 
                     # Iterating over video frames, processing one window at a time:
                     is_first_step = True
@@ -182,7 +190,12 @@ if __name__ == "__main__":
                         #     plugin="FFMPEG",
                         # )
                         cur_img_array_list
+                        # cur_img_path_list
                     ):
+
+                        # frame = Image.open(os.path.join('data/nuscenes', frame_path))
+                        # frame = np.array(frame)
+
                         if i % model.step == 0 and i != 0:
                             pred_tracks, pred_visibility = _process_step(
                                 window_frames,
@@ -202,7 +215,7 @@ if __name__ == "__main__":
                         grid_query_frame=grid_query_frame,
                     )
 
-                    print("Tracks are computed")
+                    # print("Tracks are computed")
 
                     # Store the tracks
                     save_pred_tracks = pred_tracks[:, grid_query_frame-1:grid_query_frame+2]
@@ -229,6 +242,11 @@ if __name__ == "__main__":
                     # )
 
                     # print()
+
+        del img_array_list
+        del window_frames
+        gc.collect()
+        torch.cuda.empty_cache()
 
 
         # for sample in nusc_data[scene]:
