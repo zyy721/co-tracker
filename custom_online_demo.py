@@ -155,10 +155,14 @@ if __name__ == "__main__":
         scene = scene_name_list[index_data]
         for cam in camera_names:
             img_array_list, sample_token_list, sample_idx_list = [], [], []
-            cur_save_path = os.path.join(save_path, cam)
+            cur_save_tracks_path = os.path.join(save_path, 'tracks', cam)
+            cur_save_visibility_path = os.path.join(save_path, 'visibility', cam)
 
-            if not os.path.exists(os.path.join(cur_save_path, scene)):
-                os.makedirs(os.path.join(cur_save_path, scene), exist_ok=True) 
+            if not os.path.exists(os.path.join(cur_save_tracks_path, scene)):
+                os.makedirs(os.path.join(cur_save_tracks_path, scene), exist_ok=True) 
+
+            if not os.path.exists(os.path.join(cur_save_visibility_path, scene)):
+                os.makedirs(os.path.join(cur_save_visibility_path, scene), exist_ok=True) 
 
             for sample_idx, sample in enumerate(nusc_data[scene]):
                 cur_img_path = sample['data'][cam]['filename']
@@ -220,10 +224,11 @@ if __name__ == "__main__":
                     # Store the tracks
                     save_pred_tracks = pred_tracks[:, grid_query_frame-1:grid_query_frame+2]
                     save_pred_visibility = pred_visibility[:, grid_query_frame-1:grid_query_frame+2]
-                    save_pred_visibility = torch.all(save_pred_visibility, dim=1)
-                    save_pred_tracks = save_pred_tracks[:, :, save_pred_visibility[0]]
+                    # save_pred_visibility = torch.all(save_pred_visibility, dim=1)
+                    # save_pred_tracks = save_pred_tracks[:, :, save_pred_visibility[0]]
 
-                    np.save(os.path.join(cur_save_path, scene, f'{token}.npy'), save_pred_tracks.cpu().numpy().astype(np.float16))
+                    np.save(os.path.join(cur_save_tracks_path, scene, f'{token}.npy'), save_pred_tracks.cpu().numpy().astype(np.float16))
+                    np.save(os.path.join(cur_save_visibility_path, scene, f'{token}.npy'), save_pred_visibility.cpu().numpy())
 
                     # # save a video with predicted tracks
                     # seq_name = args.video_path.split("/")[-1]
